@@ -1,0 +1,10 @@
+{
+	"_comment": "This exists in order for the project to be properly hosted at http://alexwendland.com/lab",
+    "name": "Random PI Approximation",
+    "description": "A javascript webworkers and canvas visualization of approximating PI using random points within an inscribed circle.",
+    "url": "index.html",
+    "sources": {
+    	"html": ["index.html"],
+    	"js": ["worker.js"]
+    }
+}
