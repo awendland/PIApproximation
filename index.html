@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Random PI Calculator</title>
+    <style>
+        table {
+            margin: 2% 5%;
+        }
+        td {
+            padding: 5px;
+        }
+        canvas {
+            border: 1px solid blue;
+        }
+    </style>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td>
+                <canvas width="600" height="600" id="canvas">Error</canvas>
+            </td>
+            <td>
+                <h2 id="text"></h2>
+                <p>Random points are calculated and tested to see if they fall within the inscribed circle. The ratio of points within the circle to total points is PI / 4. Every ~10,000 iteration will draw the last tested location on the canvas in order to provide a visual of the process.</p>
+                <p>Your current progress is saved in localStorage, so if you reload the page the visualization will disappear but your calculation for PI will remain. Because of the way JS stores numbers, I'm guessing that PI can only be approximated to Log10(2^53) digits (≈15).</p>
+                <p>You can restart the calculation by pressing this button: <button id="restart">Restart</button></p>
+            </td>
+        </tr>
+    </table>
+
+    <script>
+        // Mock localStorage to protect against errors
+        if (!window.localStorage) {
+            window.localStorage = {
+                getItem: function(name) {
+                    return undefined;
+                },
+                setItem: function(name, val) {}
+            }
+        }
+
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        var width = canvas.width;
+        var height = canvas.height;
+        var pi, averageCounter = 0,
+            probabilityCounter = 0,
+            average = 0;
+        var area = width * height;
+        var textWindow = document.getElementById("text");
+
+        //filled
+        function drawCircle(circle) {
+            ctx.beginPath()
+            ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2, false);
+            ctx.closePath();
+
+            ctx.fillStyle = circle.color || "#FF0000";
+            ctx.fill();
+        }
+
+        function drawCircleStroke(circle) {
+            ctx.beginPath()
+            ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2, false);
+            ctx.closePath();
+
+            ctx.strokeStyle = '#000000'
+            ctx.stroke();
+        }
+
+        var worker;
+        document.getElementById("restart").addEventListener('click', function() {
+            localStorage.setItem('count', 0);
+            localStorage.setItem('inside', 0);
+
+            ctx.clearRect(0, 0, width, height);
+            worker.terminate();
+            startCalculation();
+        });
+
+        function startCalculation() {
+            var inscribedCircle = {
+                x: width / 2,
+                y: height / 2,
+                radius: (width + height) / 4
+            };
+            drawCircleStroke(inscribedCircle);
+
+            worker = new Worker("worker.js");
+
+            worker.addEventListener("message", function (event) {
+                var status = event.data;
+                var pi = status.inside / status.count * 4;
+                textWindow.innerHTML = "Pi ≈ " + pi + "</br>Trials: " + status.count;
+
+                drawCircle({
+                    x: status.x,
+                    y: status.y,
+                    color: status.inCircle ? "#00ff00" : "#ff0000",
+                    radius: 1
+                });
+
+                // Save progress
+                localStorage.setItem('count', status.count);
+                localStorage.setItem('inside', status.inside);
+            }, false);
+
+            worker.postMessage({
+                width: width,
+                height: height,
+                circle: inscribedCircle,
+                startCount: localStorage.getItem('count') || 0,
+                startInside: localStorage.getItem('inside') || 0
+            }); // start the worker.
+        }
+        startCalculation();
+    </script>
+
+</body>
+
+</html>
